@@ -9,29 +9,31 @@ import { getGalleryService } from 'services/gallery-service';
 
 export default class ImageGallery extends Component {
   state = {
-    gallery: null,
-    page: 1,
+    gallery: [],
     loading: false,
     error: null,
     total: '',
-    loaded: 0,
   };
 
   async componentDidUpdate(prevProps, prevState) {
     const name = this.props.categoryName;
+    const page = this.props.page;
 
     if (prevProps.categoryName !== this.props.categoryName) {
+      this.setState({ gallery: [] });
+    }
+
+    if (
+      prevProps.categoryName !== this.props.categoryName ||
+      page !== prevProps.page
+    ) {
       this.setState({ loading: true });
-      this.setState({ page: 1 });
-      this.setState({ loaded: 12 });
-
       try {
-        const gallery = await getGalleryService(name);
-
-        this.setState({ gallery: gallery.data.hits });
-        this.setState({ total: gallery.data.totalHits });
-        this.setState(prevState => ({ page: prevState.page + 1 }));
-        this.setState({ visibleLearnMore: true });
+        const newGallery = await getGalleryService(name, page);
+        this.setState(prevState => ({
+          gallery: [...prevState.gallery, ...newGallery.data.hits],
+        }));
+        this.setState({ total: newGallery.data.totalHits });
       } catch (error) {
         console.log(error);
       } finally {
@@ -40,30 +42,13 @@ export default class ImageGallery extends Component {
     }
   }
 
-  handleLoadmoreClick = async () => {
-    const name = this.props.categoryName;
-    const { page, total, loaded } = this.state;
-    this.setState({ loading: true });
-    this.setState(prevState => ({ page: prevState.page + 1 }));
-    this.setState(prevState => ({ loaded: prevState.loaded + 12 }));
-    if (loaded >= total) {
-      this.setState({ visibleLearnMore: false });
-    }
-    try {
-      const newGallery = await getGalleryService(name, page);
-
-      this.setState(prevState => ({
-        gallery: [...prevState.gallery, ...newGallery.data.hits],
-      }));
-    } catch (error) {
-      console.log(error);
-    } finally {
-      this.setState({ loading: false });
-    }
+  handleLoadmoreClick = () => {
+    this.props.setPage();
   };
 
   render() {
-    const { gallery, loading, error, total, loaded } = this.state;
+    const { gallery, loading, error, total } = this.state;
+    const { loaded } = this.props;
     return (
       <section>
         <ImageGalleryStyled className="gallery">
